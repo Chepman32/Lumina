@@ -166,7 +166,7 @@ export default function DrawingPanel({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'rgba(0,0,0,0.9)',
-    height: 280,
+    height: 180,
     padding: SPACING.m,
   },
   section: {

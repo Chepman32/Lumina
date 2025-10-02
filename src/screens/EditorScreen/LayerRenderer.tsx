@@ -129,12 +129,26 @@ function StickerLayerRenderer({ layer }: { layer: Layer }) {
   const stickerAsset = StickerService.getStickerById(data.assetId);
   const emoji = data.emoji ?? stickerAsset?.emoji;
 
+  console.log('StickerLayerRenderer:', {
+    layerId: layer.id,
+    emoji,
+    width: data.width,
+    height: data.height,
+    assetId: data.assetId,
+  });
+
   const paragraph = useMemo(() => {
-    if (!emoji) return null;
-    return StickerService.createEmojiParagraph(emoji, data.width, data.height);
-  }, [emoji, data.height, data.width]);
+    if (!emoji) {
+      console.log('No emoji for sticker:', layer.id);
+      return null;
+    }
+    const para = StickerService.createEmojiParagraph(emoji, data.width, data.height);
+    console.log('Created paragraph:', para ? 'success' : 'failed');
+    return para;
+  }, [emoji, data.height, data.width, layer.id]);
 
   if (!paragraph) {
+    console.log('Rendering fallback rect for:', layer.id);
     return (
       <Rect
         x={0}
@@ -148,13 +162,15 @@ function StickerLayerRenderer({ layer }: { layer: Layer }) {
   }
 
   const paragraphHeight = paragraph.getHeight();
-  const baseline = (data.height - paragraphHeight) / 2 + paragraphHeight;
+  const yOffset = (data.height - paragraphHeight) / 2;
+
+  console.log('Rendering paragraph - height:', paragraphHeight, 'yOffset:', yOffset);
 
   return (
     <Paragraph
       paragraph={paragraph}
       x={0}
-      y={baseline}
+      y={yOffset}
       width={data.width}
     />
   );
@@ -216,14 +232,16 @@ function DrawingLayerRenderer({ layer }: { layer: Layer }) {
 }
 
 function SelectionHandles({ layer }: { layer: Layer }) {
+  // Don't show selection handles for stickers
+  if (layer.type === 'sticker') {
+    return null;
+  }
+
   const getLayerBounds = () => {
     switch (layer.type) {
       case 'image':
         const imageData = layer.data as ImageLayerData;
         return { width: imageData.width, height: imageData.height };
-      case 'sticker':
-        const stickerData = layer.data as StickerLayerData;
-        return { width: stickerData.width, height: stickerData.height };
       case 'text':
         const textData = layer.data as TextLayerData;
         return {

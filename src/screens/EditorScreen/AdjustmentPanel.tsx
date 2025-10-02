@@ -169,7 +169,7 @@ export default function AdjustmentPanel() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'rgba(0,0,0,0.9)',
-    height: 300,
+    height: 180,
   },
   presetsContainer: {
     paddingVertical: SPACING.m,

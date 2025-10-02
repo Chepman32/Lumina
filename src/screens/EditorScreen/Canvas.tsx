@@ -50,6 +50,7 @@ export default function Canvas() {
 
   const draggingLayerId = useRef<string | null>(null);
   const dragInitialTransform = useRef<{ x: number; y: number } | null>(null);
+  const lastUpdateTime = useRef<number>(0);
 
   // Canvas transform values
   const scale = useSharedValue(zoom);
@@ -212,12 +213,15 @@ export default function Canvas() {
       const newX = initialTransform.x + deltaX;
       const newY = initialTransform.y + deltaY;
 
-      if (
-        newX === targetLayer.transform.x &&
-        newY === targetLayer.transform.y
-      ) {
+      // Throttle updates to 60fps (16ms) for smoother movement
+      const now = Date.now();
+      const timeSinceLastUpdate = now - lastUpdateTime.current;
+
+      if (timeSinceLastUpdate < 16) {
         return;
       }
+
+      lastUpdateTime.current = now;
 
       updateLayer(layerId, {
         transform: {
@@ -312,7 +316,10 @@ export default function Canvas() {
             {/* Render layers */}
             <Group>
               {layers
-                .filter(layer => layer.visible)
+                .filter(layer => {
+                  console.log('Layer:', layer.id, layer.type, layer.visible, layer.transform);
+                  return layer.visible;
+                })
                 .map(layer => (
                   <LayerRenderer
                     key={layer.id}
