@@ -4,11 +4,10 @@ import {
   Rect,
   Image as SkiaImage,
   useImage,
-  Text as SkiaText,
-  useFont,
   Circle,
   Path,
   Skia,
+  Paragraph,
 } from '@shopify/react-native-skia';
 import type {
   Layer,
@@ -128,9 +127,14 @@ function ImageLayerRenderer({ layer }: { layer: Layer }) {
 function StickerLayerRenderer({ layer }: { layer: Layer }) {
   const data = layer.data as StickerLayerData;
   const stickerAsset = StickerService.getStickerById(data.assetId);
+  const emoji = data.emoji ?? stickerAsset?.emoji;
 
-  if (!stickerAsset) {
-    // Fallback placeholder
+  const paragraph = useMemo(() => {
+    if (!emoji) return null;
+    return StickerService.createEmojiParagraph(emoji, data.width, data.height);
+  }, [emoji, data.height, data.width]);
+
+  if (!paragraph) {
     return (
       <Rect
         x={0}
@@ -143,28 +147,16 @@ function StickerLayerRenderer({ layer }: { layer: Layer }) {
     );
   }
 
-  // For now, render a colored rectangle representing the sticker
-  // In a real implementation, we'd render the actual emoji or image
+  const paragraphHeight = paragraph.getHeight();
+  const baseline = (data.height - paragraphHeight) / 2 + paragraphHeight;
+
   return (
-    <Group>
-      <Rect
-        x={0}
-        y={0}
-        width={data.width}
-        height={data.height}
-        color={COLORS.accent}
-        rx={8}
-      />
-      {/* Visual indicator that this is a sticker */}
-      <Rect
-        x={data.width - 16}
-        y={4}
-        width={12}
-        height={12}
-        color={COLORS.white}
-        rx={6}
-      />
-    </Group>
+    <Paragraph
+      paragraph={paragraph}
+      x={0}
+      y={baseline}
+      width={data.width}
+    />
   );
 }
 

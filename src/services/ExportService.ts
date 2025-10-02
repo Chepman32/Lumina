@@ -2,9 +2,14 @@ import { Skia } from '@shopify/react-native-skia';
 import type { SkImage, SkSurface } from '@shopify/react-native-skia';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
-import type { AppliedFilter, EditorState } from '../types/editor.types';
+import type {
+  AppliedFilter,
+  EditorState,
+  StickerLayerData,
+} from '../types/editor.types';
 import { ImageService } from './ImageService';
 import { FilterService } from './FilterService';
+import { StickerService } from './StickerService';
 
 export interface ExportOptions {
   format: 'jpg' | 'png' | 'heic';
@@ -197,11 +202,34 @@ export class ExportService {
     layer: any,
     paint: any,
   ): Promise<void> {
-    // For now, render a colored rectangle
-    const data = layer.data;
-    const rect = Skia.XYWHRect(0, 0, data.width, data.height);
-    paint.setColor(Skia.Color('#EC4899')); // Accent color
-    canvas.drawRoundRect(rect, 8, 8, paint);
+    const data = layer.data as StickerLayerData;
+    const stickerAsset = StickerService.getStickerById(data.assetId);
+    const emoji = data.emoji ?? stickerAsset?.emoji;
+
+    if (!emoji) {
+      const rect = Skia.XYWHRect(0, 0, data.width, data.height);
+      paint.setColor(Skia.Color('#EC4899'));
+      canvas.drawRoundRect(rect, 8, 8, paint);
+      return;
+    }
+
+    const paragraph = StickerService.createEmojiParagraph(
+      emoji,
+      data.width,
+      data.height,
+    );
+
+    if (!paragraph) {
+      const rect = Skia.XYWHRect(0, 0, data.width, data.height);
+      paint.setColor(Skia.Color('#EC4899'));
+      canvas.drawRoundRect(rect, 8, 8, paint);
+      return;
+    }
+
+    const paragraphHeight = paragraph.getHeight();
+    const baseline = (data.height - paragraphHeight) / 2 + paragraphHeight;
+
+    paragraph.paint(canvas, 0, baseline);
   }
 
   private static async renderTextLayer(

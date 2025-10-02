@@ -1,3 +1,5 @@
+import { Skia, TextAlign } from '@shopify/react-native-skia';
+import type { SkParagraph } from '@shopify/react-native-skia';
 import type { StickerLayerData } from '../types/editor.types';
 
 export interface StickerAsset {
@@ -392,6 +394,8 @@ export class StickerService {
   static createStickerLayerData(asset: StickerAsset): StickerLayerData {
     return {
       assetId: asset.id,
+      sourceType: 'emoji',
+      emoji: asset.emoji,
       width: asset.width,
       height: asset.height,
     };
@@ -403,5 +407,42 @@ export class StickerService {
   static isPremium(stickerId: string): boolean {
     const sticker = this.getStickerById(stickerId);
     return sticker?.premium || false;
+  }
+
+  /**
+   * Build a Skia paragraph representation for an emoji sticker.
+   */
+  static createEmojiParagraph(
+    emoji: string,
+    width: number,
+    height: number,
+  ): SkParagraph | null {
+    if (!emoji) {
+      return null;
+    }
+
+    try {
+      const builder = Skia.ParagraphBuilder.Make({
+        textAlign: TextAlign.Center,
+        textStyle: {
+          fontFamilies: [
+            'Apple Color Emoji',
+            'Segoe UI Emoji',
+            'Noto Color Emoji',
+            'Twemoji Mozilla',
+            'sans-serif',
+          ],
+          fontSize: Math.min(width, height) * 0.85,
+        },
+      });
+
+      builder.addText(emoji);
+      const paragraph = builder.build();
+      paragraph.layout(width);
+      return paragraph;
+    } catch (error) {
+      console.error('Failed to create sticker paragraph:', error);
+      return null;
+    }
   }
 }

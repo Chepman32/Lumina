@@ -17,9 +17,14 @@ export interface ImageLayerData {
   height: number;
 }
 
+export type StickerSourceType = 'emoji';
+
 export interface StickerLayerData {
   assetId: string;
+  sourceType: StickerSourceType;
+  emoji?: string;
   image?: SkImage;
+  tint?: string;
   width: number;
   height: number;
 }
