@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -44,19 +44,46 @@ const PREMIUM_FILTERS: Filter[] = [
 
 export default function FilterPanel() {
   const {
-    availableFilters,
     appliedFilters,
     applyFilterToLayers,
     updateFilterIntensity,
     getFilterIntensity,
     isFilterApplied,
     isProcessing,
+    clearAllFilters,
   } = useFilterEngine();
 
   const [selectedFilter, setSelectedFilter] = useState<string>('none');
   const [intensity, setIntensity] = useState(100);
 
+  useEffect(() => {
+    if (!appliedFilters.length) {
+      if (selectedFilter !== 'none') {
+        setSelectedFilter('none');
+      }
+      if (intensity !== 100) {
+        setIntensity(100);
+      }
+      return;
+    }
+
+    const activeFilter = appliedFilters[appliedFilters.length - 1];
+    const appliedIntensity = Math.max(
+      0,
+      Math.min(100, Math.round(((activeFilter.intensity ?? 1) * 100) || 0)),
+    );
+
+    if (selectedFilter !== activeFilter.name) {
+      setSelectedFilter(activeFilter.name);
+    }
+
+    if (intensity !== appliedIntensity) {
+      setIntensity(appliedIntensity);
+    }
+  }, [appliedFilters, intensity, selectedFilter]);
+
   const allFilters = [...FREE_FILTERS, ...PREMIUM_FILTERS];
+  const intensityDisabled = selectedFilter === 'none' || isProcessing;
   const handleFilterSelect = async (filter: Filter) => {
     if (filter.premium) {
       // TODO: Check if user has purchased premium filters
@@ -64,19 +91,41 @@ export default function FilterPanel() {
       return;
     }
 
-    setSelectedFilter(filter.id);
-
-    // Apply new filter (except 'none')
-    if (filter.id !== 'none') {
-      await applyFilterToLayers(filter.id, intensity / 100);
+    if (isProcessing) {
+      return;
     }
+
+    if (filter.id === 'none') {
+      clearAllFilters();
+      setSelectedFilter('none');
+      setIntensity(100);
+      return;
+    }
+
+    if (selectedFilter === filter.id && isFilterApplied(filter.id)) {
+      return;
+    }
+
+    const existingIntensity = getFilterIntensity(filter.id);
+    const normalizedIntensity =
+      existingIntensity != null
+        ? Math.max(0, Math.min(100, Math.round(existingIntensity * 100)))
+        : 100;
+
+    clearAllFilters();
+
+    setSelectedFilter(filter.id);
+    setIntensity(normalizedIntensity);
+
+    await applyFilterToLayers(filter.id, normalizedIntensity / 100);
   };
 
   const handleIntensityChange = async (newIntensity: number) => {
-    setIntensity(newIntensity);
+    const clamped = Math.max(0, Math.min(100, newIntensity));
+    setIntensity(clamped);
 
     if (selectedFilter !== 'none') {
-      await updateFilterIntensity(selectedFilter, newIntensity / 100);
+      await updateFilterIntensity(selectedFilter, clamped / 100);
     }
   };
 
@@ -136,16 +185,24 @@ export default function FilterPanel() {
           {/* Simple intensity controls */}
           <View style={styles.intensityControls}>
             <TouchableOpacity
-              style={styles.intensityButton}
+              style={[
+                styles.intensityButton,
+                intensityDisabled && styles.intensityButtonDisabled,
+              ]}
               onPress={() => handleIntensityChange(Math.max(0, intensity - 10))}
+              disabled={intensityDisabled}
             >
               <Text style={styles.intensityButtonText}>-</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.intensityButton}
+              style={[
+                styles.intensityButton,
+                intensityDisabled && styles.intensityButtonDisabled,
+              ]}
               onPress={() =>
                 handleIntensityChange(Math.min(100, intensity + 10))
               }
+              disabled={intensityDisabled}
             >
               <Text style={styles.intensityButtonText}>+</Text>
             </TouchableOpacity>
@@ -262,6 +319,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: SPACING.s,
+  },
+  intensityButtonDisabled: {
+    opacity: 0.5,
   },
   intensityButtonText: {
     fontSize: 20,

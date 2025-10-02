@@ -2,8 +2,9 @@ import { Skia } from '@shopify/react-native-skia';
 import type { SkImage, SkSurface } from '@shopify/react-native-skia';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
-import type { EditorState } from '../types/editor.types';
+import type { AppliedFilter, EditorState } from '../types/editor.types';
 import { ImageService } from './ImageService';
+import { FilterService } from './FilterService';
 
 export interface ExportOptions {
   format: 'jpg' | 'png' | 'heic';
@@ -118,10 +119,7 @@ export class ExportService {
       let finalImage = surface.makeImageSnapshot();
 
       for (const filter of filters) {
-        const filteredImage = await this.applyFilterToImage(finalImage, filter);
-        if (filteredImage) {
-          finalImage = filteredImage;
-        }
+        finalImage = this.applyFilterToImage(finalImage, filter);
       }
 
       onProgress?.(1.0);
@@ -234,13 +232,18 @@ export class ExportService {
     canvas.drawRoundRect(rect, 4, 4, paint);
   }
 
-  private static async applyFilterToImage(
-    image: SkImage,
-    filter: any,
-  ): Promise<SkImage | null> {
-    // This would apply the filter using FilterService
-    // For now, return the original image
-    return image;
+  private static applyFilterToImage(image: SkImage, filter: AppliedFilter): SkImage {
+    if (!filter || filter.intensity <= 0) {
+      return image;
+    }
+
+    const result = FilterService.applyFilter(
+      image,
+      filter.name,
+      Math.max(0, Math.min(1, filter.intensity ?? 1)),
+    );
+
+    return result ?? image;
   }
 
   /**

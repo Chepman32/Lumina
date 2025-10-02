@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Group,
   Rect,
@@ -19,6 +19,8 @@ import type {
 } from '../../types/editor.types';
 import { StickerService } from '../../services/StickerService';
 import { COLORS } from '../../utils/constants';
+import { useEditorStore } from '../../stores/editorStore';
+import { FilterService } from '../../services/FilterService';
 
 interface LayerRendererProps {
   layer: Layer;
@@ -69,8 +71,36 @@ export default function LayerRenderer({
 function ImageLayerRenderer({ layer }: { layer: Layer }) {
   const data = layer.data as ImageLayerData;
   const image = useImage(data.path);
+  const filters = useEditorStore(state => state.filters);
 
-  if (!image) {
+  const filteredImage = useMemo(() => {
+    if (!image) return null;
+    if (!filters.length) return image;
+
+    let currentImage = image;
+
+    filters.forEach(filter => {
+      if (!filter || filter.intensity <= 0) {
+        return;
+      }
+
+      const result = FilterService.applyFilter(
+        currentImage,
+        filter.name,
+        Math.max(0, Math.min(1, filter.intensity ?? 1)),
+      );
+
+      if (result) {
+        currentImage = result;
+      }
+    });
+
+    return currentImage;
+  }, [filters, image]);
+
+  const imageToRender = filteredImage ?? image;
+
+  if (!imageToRender) {
     // Show placeholder while loading
     return (
       <Rect
@@ -85,7 +115,7 @@ function ImageLayerRenderer({ layer }: { layer: Layer }) {
 
   return (
     <SkiaImage
-      image={image}
+      image={imageToRender}
       x={0}
       y={0}
       width={data.width}

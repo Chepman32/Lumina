@@ -1,8 +1,27 @@
-import { Skia } from '@shopify/react-native-skia';
+import {
+  Skia,
+  TileMode,
+  FilterMode,
+  MipmapMode,
+} from '@shopify/react-native-skia';
 import type { SkRuntimeEffect, SkImage } from '@shopify/react-native-skia';
 
 // Basic filter shaders
 const FILTER_SHADERS = {
+  natural: `
+    uniform shader image;
+    uniform float intensity;
+
+    vec4 main(vec2 coord) {
+      vec4 color = image.eval(coord);
+      vec3 enhanced = clamp(color.rgb * vec3(1.05, 1.05, 1.05) + vec3(0.02), 0.0, 1.0);
+      float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+      vec3 balanced = mix(vec3(gray), enhanced, 0.9);
+      vec3 final = mix(color.rgb, balanced, intensity);
+      return vec4(final, color.a);
+    }
+  `,
+
   vintage: `
     uniform shader image;
     uniform float intensity;
@@ -106,6 +125,49 @@ const FILTER_SHADERS = {
     }
   `,
 
+  portrait: `
+    uniform shader image;
+    uniform float intensity;
+
+    vec4 main(vec2 coord) {
+      vec4 color = image.eval(coord);
+      vec3 warm = clamp(color.rgb * vec3(1.12, 1.04, 0.94) + vec3(0.04), 0.0, 1.0);
+      float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+      vec3 softened = mix(vec3(luminance), warm, 0.85);
+      vec3 final = mix(color.rgb, softened, intensity);
+      return vec4(final, color.a);
+    }
+  `,
+
+  food: `
+    uniform shader image;
+    uniform float intensity;
+
+    vec4 main(vec2 coord) {
+      vec4 color = image.eval(coord);
+      vec3 vibrant = clamp((color.rgb - 0.5) * 1.25 + 0.5, 0.0, 1.0);
+      float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+      vibrant = mix(vec3(gray), vibrant, 1.15);
+      vibrant = clamp(vibrant * vec3(1.08, 1.03, 0.96) + vec3(0.03, 0.02, 0.0), 0.0, 1.0);
+      vec3 final = mix(color.rgb, vibrant, intensity);
+      return vec4(final, color.a);
+    }
+  `,
+
+  sunset: `
+    uniform shader image;
+    uniform float intensity;
+
+    vec4 main(vec2 coord) {
+      vec4 color = image.eval(coord);
+      vec3 warm = clamp(color.rgb * vec3(1.15, 1.06, 0.9) + vec3(0.05, 0.02, 0.0), 0.0, 1.0);
+      float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+      vec3 enhanced = mix(vec3(gray), warm, 0.85);
+      vec3 final = mix(color.rgb, enhanced, intensity);
+      return vec4(final, color.a);
+    }
+  `,
+
   dramatic: `
     uniform shader image;
     uniform float intensity;
@@ -121,6 +183,21 @@ const FILTER_SHADERS = {
       dramatic = mix(vec3(gray), dramatic, 0.8);
       
       vec3 final = mix(color.rgb, dramatic, intensity);
+      return vec4(final, color.a);
+    }
+  `,
+
+  pastel: `
+    uniform shader image;
+    uniform float intensity;
+
+    vec4 main(vec2 coord) {
+      vec4 color = image.eval(coord);
+      vec3 softened = mix(color.rgb, vec3(0.65), 0.25);
+      softened = clamp(softened + vec3(0.08), 0.0, 1.0);
+      float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+      vec3 pastel = mix(vec3(gray), softened, 0.6);
+      vec3 final = mix(color.rgb, pastel, intensity);
       return vec4(final, color.a);
     }
   `,
@@ -183,8 +260,15 @@ export class FilterService {
       const canvas = surface.getCanvas();
       const paint = Skia.Paint();
 
+      const imageShader = image.makeShaderOptions(
+        TileMode.Clamp,
+        TileMode.Clamp,
+        FilterMode.Linear,
+        MipmapMode.None,
+      );
+
       // Create shader with uniforms
-      const shader = effect.makeShader([image.makeShader(), intensity]);
+      const shader = effect.makeShaderWithChildren([intensity], [imageShader]);
 
       paint.setShader(shader);
 

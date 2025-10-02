@@ -72,9 +72,9 @@ export const useFilterEngine = () => {
    * Get current filter intensity
    */
   const getFilterIntensity = useCallback(
-    (filterName: string): number => {
+    (filterName: string): number | null => {
       const filter = filters.find(f => f.name === filterName);
-      return filter?.intensity || 0;
+      return filter?.intensity ?? null;
     },
     [filters],
   );
