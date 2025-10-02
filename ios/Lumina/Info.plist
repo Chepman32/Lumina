@@ -33,6 +33,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Lumina needs photo library access to import images.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Lumina needs this permission to save edited images to your library.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
